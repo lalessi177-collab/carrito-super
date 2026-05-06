@@ -169,26 +169,65 @@
   function procesarTexto(texto) {
     texto = texto.trim().toLowerCase();
     const trans = document.getElementById("transcripcion");
+
     if (/\b(fin|terminar|finalizar|cerrar|listo)\b/.test(texto)) {
       trans.textContent="Cerrando compra..."; trans.className="transcripcion ok";
       setTimeout(finCompra, 700); return;
     }
+
     let cantidad=1, t=texto;
+
+    // Cantidad al final: "x3", "por 3"
     const mFin = t.match(/(?:\bx\s*|\bpor\s+)(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*$/i);
-    if (mFin) { const v=mFin[1].toLowerCase(); cantidad=isNaN(v)?(palabrasNum[v]||1):parseInt(v); t=t.slice(0,t.length-mFin[0].length).trim(); }
+    if (mFin) {
+      const v=mFin[1].toLowerCase();
+      cantidad=isNaN(v)?(palabrasNum[v]||1):parseInt(v);
+      t=t.slice(0,t.length-mFin[0].length).trim();
+    }
+
+    // Cantidad al inicio: "3 yogures 450"
     if (cantidad===1) {
       const mIni=t.match(/^(\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+/i);
-      if (mIni) { const v=mIni[1].toLowerCase(); const p=isNaN(v)?(palabrasNum[v]||null):parseInt(v); const r=t.slice(mIni[0].length); if(p&&!/^\d+$/.test(r.trim())){cantidad=p;t=r.trim();} }
+      if (mIni) {
+        const v=mIni[1].toLowerCase();
+        const p=isNaN(v)?(palabrasNum[v]||null):parseInt(v);
+        const r=t.slice(mIni[0].length);
+        if(p&&!/^\d/.test(r.trim())){cantidad=p;t=r.trim();}
+      }
     }
-    // Normalizar miles: "20.000"→"20000"
-    const tNorm=t.replace(/(\d+)[.,](\d{3})\b/g,"$1$2").replace(/(\d+),(\d+)/g,"$1.$2");
-    const nums=tNorm.match(/\d+(?:\.\d+)?/g);
-    if (!nums) { trans.textContent="No detecté precio. Ej: \"leche 350\""; trans.className="transcripcion"; return; }
-    const precio=parseFloat(nums[nums.length-1]);
-    let nombre=t.replace(new RegExp(nums[nums.length-1]+"\\s*$"),"").trim();
-    nombre=nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
-    if(!nombre)nombre="producto";
-    items.push({nombre,precio,cant:cantidad});
+
+    // Normalizar el texto: quitar puntos/comas de miles
+    // "120.000" → "120000", "1.500,50" → "150050" (precio entero)
+    // Safari dice "120.000" para ciento veinte mil
+    function normalizarNumero(s) {
+      // Si tiene punto seguido de exactamente 3 dígitos al final o antes de coma → separador de miles
+      s = s.replace(/(\d)[.,](\d{3})(?=[^\d]|$)/g, '$1$2');
+      // Repetir por si hay múltiples grupos: 1.000.000
+      s = s.replace(/(\d)[.,](\d{3})(?=[^\d]|$)/g, '$1$2');
+      // Coma decimal restante
+      s = s.replace(/(\d),(\d+)/g, '$1.$2');
+      return s;
+    }
+
+    const tNorm = normalizarNumero(t);
+
+    // Extraer todos los números del texto normalizado
+    const nums = tNorm.match(/\d+(?:\.\d+)?/g);
+    if (!nums) {
+      trans.textContent="No detecté precio. Ej: \"leche 350\"";
+      trans.className="transcripcion"; return;
+    }
+
+    const precio = parseFloat(nums[nums.length-1]);
+
+    // El nombre es lo que queda quitando el último número del texto ORIGINAL
+    // Buscamos el último número en t (con posibles puntos) para quitarlo
+    const ultimoNumOrig = t.match(/(\d+[.,])*\d+\s*$/);
+    let nombre = ultimoNumOrig ? t.slice(0, t.length - ultimoNumOrig[0].length).trim() : t;
+    nombre = nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
+    if(!nombre) nombre="producto";
+
+    items.push({nombre, precio, cant:cantidad});
     const cantTxt=cantidad>1?` × ${cantidad}`:"";
     trans.textContent=`✓ ${nombre.charAt(0).toUpperCase()+nombre.slice(1)}${cantTxt} — ${fmt(precio*cantidad)}`;
     trans.className="transcripcion ok";
@@ -196,7 +235,7 @@
     setTimeout(()=>{ trans.textContent="Listo, seguí dictando..."; trans.className="transcripcion"; },2500);
   }
 
-  function toggleMic() {
+    function toggleMic() {
     if (!("webkitSpeechRecognition" in window)&&!("SpeechRecognition" in window)) { document.getElementById("noSoporte").style.display="block"; return; }
     escuchando?detenerMic():iniciarMic();
   }
