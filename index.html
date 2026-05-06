@@ -241,9 +241,15 @@
         else interim+=t;
       }
       if(final.trim()){
+        // Solo procesar si no hay timer activo (evitar duplicado con Safari)
         clearTimeout(window._safariTimer);
+        window._safariTimer=null;
+        if(!window._yaProcess){
+          window._yaProcess=true;
+          procesarTexto(final);
+          setTimeout(()=>{ window._yaProcess=false; },500);
+        }
         window._ultimoInterim='';
-        procesarTexto(final);
       } else if(interim.trim()){
         document.getElementById("transcripcion").textContent=interim+"...";
         document.getElementById("transcripcion").className="transcripcion";
@@ -253,6 +259,7 @@
           if(window._ultimoInterim && window._ultimoInterim.trim()){
             const txt=window._ultimoInterim;
             window._ultimoInterim='';
+            window._safariTimer=null;
             procesarTexto(txt);
           }
         },1200);
