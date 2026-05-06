@@ -196,36 +196,27 @@
       }
     }
 
-    // Extraer precio: buscar todos los grupos numéricos (con o sin puntos de miles)
-    // Safari puede decir "15.000" o "15000" para quince mil
-    // Estrategia: encontrar todos los tokens numéricos y reconstruir el número real
-    function extraerPrecio(texto) {
-      // Buscar patron de numero con punto de miles: digitos + punto + 3digitos (+ más grupos)
-      // Ejemplo: "15.000" "1.500.000" "120.000"
-      const conMiles = texto.match(/(\d{1,3}(?:\.\d{3})+)/g);
-      if (conMiles) {
-        // Tomar el último número con formato de miles y convertirlo
-        const ultimo = conMiles[conMiles.length - 1];
-        return { valor: parseFloat(ultimo.replace(/\./g, '')), patron: ultimo };
-      }
-      // Si no hay formato de miles, buscar número simple al final
-      const simple = texto.match(/(\d+)(?:\s*)$/);
-      if (simple) {
-        return { valor: parseFloat(simple[1]), patron: simple[1] };
-      }
-      return null;
+    // CLAVE: Safari transcribe "15.000", "120.000", "1.500.000"
+    // Reemplazar TODOS los patrones dígitos.3dígitos por dígitos sin punto
+    // Hacerlo varias veces para cubrir "1.000.000"
+    let tNorm = t;
+    for (let i=0; i<4; i++) {
+      tNorm = tNorm.replace(/(\d)\.( \d{3})\b/g, '$1$2');
+      tNorm = tNorm.replace(/(\d)\.(\d{3})\b/g, '$1$2');
     }
 
-    const resultado = extraerPrecio(t);
-    if (!resultado) {
+    // Ahora extraer números simples
+    const nums = tNorm.match(/\d+/g);
+    if (!nums) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
       trans.className="transcripcion"; return;
     }
 
-    const precio = resultado.valor;
+    const precio = parseFloat(nums[nums.length-1]);
 
-    // Nombre: quitar el patrón del precio del final del texto
-    let nombre = t.slice(0, t.lastIndexOf(resultado.patron)).trim();
+    // Nombre: todo lo que está antes del último número en tNorm
+    const idxNum = tNorm.lastIndexOf(nums[nums.length-1]);
+    let nombre = tNorm.slice(0, idxNum).trim();
     nombre = nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
     if(!nombre) nombre="producto";
 
