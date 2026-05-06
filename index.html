@@ -196,16 +196,20 @@
       }
     }
 
-    // CLAVE: Safari transcribe "15.000", "120.000", "1.500.000"
-    // Reemplazar TODOS los patrones dígitos.3dígitos por dígitos sin punto
-    // Hacerlo varias veces para cubrir "1.000.000"
-    let tNorm = t;
-    for (let i=0; i<4; i++) {
-      tNorm = tNorm.replace(/(\d)\.( \d{3})\b/g, '$1$2');
-      tNorm = tNorm.replace(/(\d)\.(\d{3})\b/g, '$1$2');
+    // Safari transcribe "moto 15.000" — necesitamos unir dígito+punto+3dígitos
+    // Usamos split/join para no depender de regex con escapes problemáticos
+    function quitarPuntosMiles(s) {
+      // Partir en tokens y reunir números separados por punto
+      // "moto 15.000 pesos" → tokens: ["moto", "15.000", "pesos"]
+      // "15.000" → quitar punto → "15000"
+      return s.replace(/\d+\.\d{3}/g, function(match) {
+        return match.replace(/\./g, '');
+      });
     }
 
-    // Ahora extraer números simples
+    const tNorm = quitarPuntosMiles(t);
+
+    // Extraer números simples
     const nums = tNorm.match(/\d+/g);
     if (!nums) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
