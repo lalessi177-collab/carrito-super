@@ -170,7 +170,6 @@
     texto = texto.trim().toLowerCase();
     const trans = document.getElementById("transcripcion");
 
-    // Mostrar texto crudo para debug
     trans.textContent = "Recibí: " + texto;
     trans.className = "transcripcion";
 
@@ -179,16 +178,9 @@
       setTimeout(finCompra, 700); return;
     }
 
-    // Normalizar: unir todos los digitos separados por punto+espacio o solo punto
-    // Cubre: "12.600", "12. 600", "12 . 600"
-    let t = texto;
-    t = t.replace(/(\d)\s*\.\s*(\d)/g, '$1$2'); // quitar punto entre digitos (con o sin espacios)
-    t = t.replace(/(\d),(?=\s|$)/g, '$1');          // quitar coma suelta al final de numero
+    let cantidad=1, t=texto;
 
-    trans.textContent = "Norm: " + t;
-
-    let cantidad=1;
-
+    // Cantidad al final: "x3", "por 3"
     const mFin = t.match(/(?:\bx\s*|\bpor\s+)(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*$/i);
     if (mFin) {
       const v=mFin[1].toLowerCase();
@@ -205,6 +197,12 @@
         if(p&&!/^\d/.test(r.trim())){cantidad=p;t=r.trim();}
       }
     }
+
+    // Safari usa COMA como separador de miles: "14,400" "15,200" "1,500,000"
+    // Tambien puede usar PUNTO: "14.400"
+    // Quitar separadores de miles: digito + coma/punto + exactamente 3 digitos
+    t = t.replace(/(\d)[,\.](\d{3})(?=\D|$)/g, '$1$2');
+    t = t.replace(/(\d)[,\.](\d{3})(?=\D|$)/g, '$1$2'); // segunda pasada para millones
 
     const nums = t.match(/\d+/g);
     if (!nums) {
