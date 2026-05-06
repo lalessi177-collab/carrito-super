@@ -196,20 +196,27 @@
       }
     }
 
-    // Safari transcribe "moto 15.000" — necesitamos unir dígito+punto+3dígitos
-    // Usamos split/join para no depender de regex con escapes problemáticos
-    function quitarPuntosMiles(s) {
-      // Partir en tokens y reunir números separados por punto
-      // "moto 15.000 pesos" → tokens: ["moto", "15.000", "pesos"]
-      // "15.000" → quitar punto → "15000"
-      return s.replace(/\d+\.\d{3}/g, function(match) {
-        return match.replace(/\./g, '');
-      });
-    }
+    // Safari transcribe numeros grandes con punto: "15.000", "25.750", "1.500.000"
+    // Estrategia: partir el texto en tokens por espacio,
+    // y para cada token que sea puramente numerico con puntos, unir los digitos
+    const tokens = t.split(' ');
+    const tokensNorm = tokens.map(tok => {
+      // Si el token es solo digitos y puntos (ej: "15.000" o "1.500.000")
+      // quitamos los puntos para obtener el numero real
+      if (/^\d+(\.\d+)+,?$/.test(tok)) {
+        return tok.replace(/[.,]/g, '');
+      }
+      // Si termina en coma y el resto son digitos con puntos
+      const sinComa = tok.replace(/,$/, '');
+      if (/^\d+(\.\d+)+$/.test(sinComa)) {
+        return sinComa.replace(/\./g, '');
+      }
+      // Token normal, solo quitar comas sueltas al final
+      return tok.replace(/,$/, '');
+    });
+    const tNorm = tokensNorm.join(' ');
 
-    const tNorm = quitarPuntosMiles(t);
-
-    // Extraer números simples
+    // Extraer numeros del texto normalizado
     const nums = tNorm.match(/\d+/g);
     if (!nums) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
@@ -218,7 +225,7 @@
 
     const precio = parseFloat(nums[nums.length-1]);
 
-    // Nombre: todo lo que está antes del último número en tNorm
+    // Nombre: todo antes del ultimo numero
     const idxNum = tNorm.lastIndexOf(nums[nums.length-1]);
     let nombre = tNorm.slice(0, idxNum).trim();
     nombre = nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
