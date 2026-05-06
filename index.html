@@ -180,9 +180,11 @@
       const mIni=t.match(/^(\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+/i);
       if (mIni) { const v=mIni[1].toLowerCase(); const p=isNaN(v)?(palabrasNum[v]||null):parseInt(v); const r=t.slice(mIni[0].length); if(p&&!/^\d+$/.test(r.trim())){cantidad=p;t=r.trim();} }
     }
-    const nums=t.match(/[\d]+(?:[.,]\d+)?/g);
+    // Normalizar miles: "20.000"→"20000"
+    const tNorm=t.replace(/(\d+)[.,](\d{3})\b/g,"$1$2").replace(/(\d+),(\d+)/g,"$1.$2");
+    const nums=tNorm.match(/\d+(?:\.\d+)?/g);
     if (!nums) { trans.textContent="No detecté precio. Ej: \"leche 350\""; trans.className="transcripcion"; return; }
-    const precio=parseFloat(nums[nums.length-1].replace(",","."));
+    const precio=parseFloat(nums[nums.length-1]);
     let nombre=t.replace(new RegExp(nums[nums.length-1]+"\\s*$"),"").trim();
     nombre=nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
     if(!nombre)nombre="producto";
