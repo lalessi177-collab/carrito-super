@@ -239,20 +239,19 @@
         interim+=e.results[i][0].transcript;
       }
       if(!interim.trim()) return;
-      // Si el texto es identico al ultimo procesado, ignorar
-      if(interim.trim()===window._ultimoProcesado) return;
       document.getElementById("transcripcion").textContent=interim+"...";
       document.getElementById("transcripcion").className="transcripcion";
       window._ultimoInterim=interim;
       clearTimeout(window._safariTimer);
       window._safariTimer=setTimeout(()=>{
         const txt=window._ultimoInterim ? window._ultimoInterim.trim() : '';
-        if(txt && txt!==window._ultimoProcesado){
-          window._ultimoProcesado=txt;
-          window._ultimoInterim='';
-          procesarTexto(txt);
-          setTimeout(()=>{ window._ultimoProcesado=''; },3000);
-        }
+        if(!txt) return;
+        window._ultimoInterim='';
+        // Bloquear durante 3 segundos para evitar doble disparo
+        if(window._bloqueado) return;
+        window._bloqueado=true;
+        setTimeout(()=>{ window._bloqueado=false; },3000);
+        procesarTexto(txt);
       },1500);
     };
     recognition.onerror=(e)=>{ const msgs={"not-allowed":"Permiso denegado. Habilitá el micrófono en Configuración → Safari.","no-speech":"No se detectó voz. Intentá de nuevo.","network":"Error de red."}; document.getElementById("micStatus").innerHTML=msgs[e.error]||("Error: "+e.error); document.getElementById("micStatus").className="mic-status"; detenerMic(); };
