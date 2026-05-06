@@ -175,7 +175,19 @@
       setTimeout(finCompra, 700); return;
     }
 
-    let cantidad=1, t=texto;
+    // PRIMERO: normalizar el texto completo
+    // Safari puede decir "11.200" o incluso "11. 200" (con espacio)
+    // Unir cualquier secuencia de digitos separados por punto o ", " que formen un numero
+    // Paso 1: quitar espacios entre numero-punto-numero: "11. 200" -> "11.200"
+    let t = texto.replace(/(\d)\. (\d)/g, '$1.$2');
+    // Paso 2: quitar puntos entre digitos: "11.200" -> "11200", "1.500.000" -> "1500000"
+    t = t.replace(/(\d)\.(\d)/g, '$1$2');
+    // Repetir por si quedaron encadenados
+    t = t.replace(/(\d)\.(\d)/g, '$1$2');
+    // Paso 3: quitar comas sueltas que hayan quedado pegadas a numeros: "11," -> "11"
+    t = t.replace(/(\d),(?=\s|$)/g, '$1');
+
+    let cantidad=1;
 
     // Cantidad al final: "x3", "por 3"
     const mFin = t.match(/(?:\bx\s*|\bpor\s+)(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*$/i);
@@ -196,38 +208,16 @@
       }
     }
 
-    // Safari transcribe numeros grandes con punto: "15.000", "25.750", "1.500.000"
-    // Estrategia: partir el texto en tokens por espacio,
-    // y para cada token que sea puramente numerico con puntos, unir los digitos
-    const tokens = t.split(' ');
-    const tokensNorm = tokens.map(tok => {
-      // Si el token es solo digitos y puntos (ej: "15.000" o "1.500.000")
-      // quitamos los puntos para obtener el numero real
-      if (/^\d+(\.\d+)+,?$/.test(tok)) {
-        return tok.replace(/[.,]/g, '');
-      }
-      // Si termina en coma y el resto son digitos con puntos
-      const sinComa = tok.replace(/,$/, '');
-      if (/^\d+(\.\d+)+$/.test(sinComa)) {
-        return sinComa.replace(/\./g, '');
-      }
-      // Token normal, solo quitar comas sueltas al final
-      return tok.replace(/,$/, '');
-    });
-    const tNorm = tokensNorm.join(' ');
-
-    // Extraer numeros del texto normalizado
-    const nums = tNorm.match(/\d+/g);
+    // Extraer numeros
+    const nums = t.match(/\d+/g);
     if (!nums) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
       trans.className="transcripcion"; return;
     }
 
     const precio = parseFloat(nums[nums.length-1]);
-
-    // Nombre: todo antes del ultimo numero
-    const idxNum = tNorm.lastIndexOf(nums[nums.length-1]);
-    let nombre = tNorm.slice(0, idxNum).trim();
+    const idxNum = t.lastIndexOf(nums[nums.length-1]);
+    let nombre = t.slice(0, idxNum).trim();
     nombre = nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
     if(!nombre) nombre="producto";
 
