@@ -170,26 +170,25 @@
     texto = texto.trim().toLowerCase();
     const trans = document.getElementById("transcripcion");
 
+    // Mostrar texto crudo para debug
+    trans.textContent = "Recibí: " + texto;
+    trans.className = "transcripcion";
+
     if (/\b(fin|terminar|finalizar|cerrar|listo)\b/.test(texto)) {
       trans.textContent="Cerrando compra..."; trans.className="transcripcion ok";
       setTimeout(finCompra, 700); return;
     }
 
-    // PRIMERO: normalizar el texto completo
-    // Safari puede decir "11.200" o incluso "11. 200" (con espacio)
-    // Unir cualquier secuencia de digitos separados por punto o ", " que formen un numero
-    // Paso 1: quitar espacios entre numero-punto-numero: "11. 200" -> "11.200"
-    let t = texto.replace(/(\d)\. (\d)/g, '$1.$2');
-    // Paso 2: quitar puntos entre digitos: "11.200" -> "11200", "1.500.000" -> "1500000"
-    t = t.replace(/(\d)\.(\d)/g, '$1$2');
-    // Repetir por si quedaron encadenados
-    t = t.replace(/(\d)\.(\d)/g, '$1$2');
-    // Paso 3: quitar comas sueltas que hayan quedado pegadas a numeros: "11," -> "11"
-    t = t.replace(/(\d),(?=\s|$)/g, '$1');
+    // Normalizar: unir todos los digitos separados por punto+espacio o solo punto
+    // Cubre: "12.600", "12. 600", "12 . 600"
+    let t = texto;
+    t = t.replace(/(\d)\s*\.\s*(\d)/g, '$1$2'); // quitar punto entre digitos (con o sin espacios)
+    t = t.replace(/(\d),(?=\s|$)/g, '$1');          // quitar coma suelta al final de numero
+
+    trans.textContent = "Norm: " + t;
 
     let cantidad=1;
 
-    // Cantidad al final: "x3", "por 3"
     const mFin = t.match(/(?:\bx\s*|\bpor\s+)(\d+|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s*$/i);
     if (mFin) {
       const v=mFin[1].toLowerCase();
@@ -197,7 +196,6 @@
       t=t.slice(0,t.length-mFin[0].length).trim();
     }
 
-    // Cantidad al inicio: "3 yogures 450"
     if (cantidad===1) {
       const mIni=t.match(/^(\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez)\s+/i);
       if (mIni) {
@@ -208,7 +206,6 @@
       }
     }
 
-    // Extraer numeros
     const nums = t.match(/\d+/g);
     if (!nums) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
