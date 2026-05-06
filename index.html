@@ -235,7 +235,31 @@
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     recognition=new SR(); recognition.lang="es-AR"; recognition.continuous=true; recognition.interimResults=true;
     recognition.onstart=()=>{ escuchando=true; document.getElementById("btnMic").className="btn-mic escuchando"; document.getElementById("micStatus").innerHTML="🔴 Escuchando...<br>Dictá producto, precio y cantidad"; document.getElementById("micStatus").className="mic-status activo"; document.getElementById("transcripcion").textContent=""; document.getElementById("transcripcion").className="transcripcion"; };
-    recognition.onresult=(e)=>{ let interim="",final=""; for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript; if(e.results[i].isFinal)final+=t; else interim+=t;} if(interim){document.getElementById("transcripcion").textContent=interim+"..."; document.getElementById("transcripcion").className="transcripcion";} if(final.trim())procesarTexto(final); };
+    recognition.onresult=(e)=>{
+      let interim="",final="";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal) final+=t;
+        else interim+=t;
+      }
+      if(final.trim()){
+        clearTimeout(window._safariTimer);
+        window._ultimoInterim='';
+        procesarTexto(final);
+      } else if(interim.trim()){
+        document.getElementById("transcripcion").textContent=interim+"...";
+        document.getElementById("transcripcion").className="transcripcion";
+        window._ultimoInterim=interim;
+        clearTimeout(window._safariTimer);
+        window._safariTimer=setTimeout(()=>{
+          if(window._ultimoInterim && window._ultimoInterim.trim()){
+            const txt=window._ultimoInterim;
+            window._ultimoInterim='';
+            procesarTexto(txt);
+          }
+        },1200);
+      }
+    };
     recognition.onerror=(e)=>{ const msgs={"not-allowed":"Permiso denegado. Habilitá el micrófono en Configuración → Safari.","no-speech":"No se detectó voz. Intentá de nuevo.","network":"Error de red."}; document.getElementById("micStatus").innerHTML=msgs[e.error]||("Error: "+e.error); document.getElementById("micStatus").className="mic-status"; detenerMic(); };
     recognition.onend=()=>{ if(escuchando)recognition.start(); };
     recognition.start();
