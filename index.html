@@ -238,19 +238,22 @@
       for(let i=e.resultIndex;i<e.results.length;i++){
         interim+=e.results[i][0].transcript;
       }
-      if(interim.trim()){
-        document.getElementById("transcripcion").textContent=interim+"...";
-        document.getElementById("transcripcion").className="transcripcion";
-        window._ultimoInterim=interim;
-        clearTimeout(window._safariTimer);
-        window._safariTimer=setTimeout(()=>{
-          if(window._ultimoInterim && window._ultimoInterim.trim()){
-            const txt=window._ultimoInterim;
-            window._ultimoInterim='';
-            procesarTexto(txt);
-          }
-        },1000);
-      }
+      if(!interim.trim()) return;
+      // Si el texto es identico al ultimo procesado, ignorar
+      if(interim.trim()===window._ultimoProcesado) return;
+      document.getElementById("transcripcion").textContent=interim+"...";
+      document.getElementById("transcripcion").className="transcripcion";
+      window._ultimoInterim=interim;
+      clearTimeout(window._safariTimer);
+      window._safariTimer=setTimeout(()=>{
+        const txt=window._ultimoInterim ? window._ultimoInterim.trim() : '';
+        if(txt && txt!==window._ultimoProcesado){
+          window._ultimoProcesado=txt;
+          window._ultimoInterim='';
+          procesarTexto(txt);
+          setTimeout(()=>{ window._ultimoProcesado=''; },3000);
+        }
+      },1500);
     };
     recognition.onerror=(e)=>{ const msgs={"not-allowed":"Permiso denegado. Habilitá el micrófono en Configuración → Safari.","no-speech":"No se detectó voz. Intentá de nuevo.","network":"Error de red."}; document.getElementById("micStatus").innerHTML=msgs[e.error]||("Error: "+e.error); document.getElementById("micStatus").className="mic-status"; detenerMic(); };
     recognition.onend=()=>{ if(escuchando)recognition.start(); };
