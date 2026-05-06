@@ -196,34 +196,36 @@
       }
     }
 
-    // Normalizar el texto: quitar puntos/comas de miles
-    // "120.000" → "120000", "1.500,50" → "150050" (precio entero)
-    // Safari dice "120.000" para ciento veinte mil
-    function normalizarNumero(s) {
-      // Si tiene punto seguido de exactamente 3 dígitos al final o antes de coma → separador de miles
-      s = s.replace(/(\d)[.,](\d{3})(?=[^\d]|$)/g, '$1$2');
-      // Repetir por si hay múltiples grupos: 1.000.000
-      s = s.replace(/(\d)[.,](\d{3})(?=[^\d]|$)/g, '$1$2');
-      // Coma decimal restante
-      s = s.replace(/(\d),(\d+)/g, '$1.$2');
-      return s;
+    // Extraer precio: buscar todos los grupos numéricos (con o sin puntos de miles)
+    // Safari puede decir "15.000" o "15000" para quince mil
+    // Estrategia: encontrar todos los tokens numéricos y reconstruir el número real
+    function extraerPrecio(texto) {
+      // Buscar patron de numero con punto de miles: digitos + punto + 3digitos (+ más grupos)
+      // Ejemplo: "15.000" "1.500.000" "120.000"
+      const conMiles = texto.match(/(\d{1,3}(?:\.\d{3})+)/g);
+      if (conMiles) {
+        // Tomar el último número con formato de miles y convertirlo
+        const ultimo = conMiles[conMiles.length - 1];
+        return { valor: parseFloat(ultimo.replace(/\./g, '')), patron: ultimo };
+      }
+      // Si no hay formato de miles, buscar número simple al final
+      const simple = texto.match(/(\d+)(?:\s*)$/);
+      if (simple) {
+        return { valor: parseFloat(simple[1]), patron: simple[1] };
+      }
+      return null;
     }
 
-    const tNorm = normalizarNumero(t);
-
-    // Extraer todos los números del texto normalizado
-    const nums = tNorm.match(/\d+(?:\.\d+)?/g);
-    if (!nums) {
+    const resultado = extraerPrecio(t);
+    if (!resultado) {
       trans.textContent="No detecté precio. Ej: \"leche 350\"";
       trans.className="transcripcion"; return;
     }
 
-    const precio = parseFloat(nums[nums.length-1]);
+    const precio = resultado.valor;
 
-    // El nombre es lo que queda quitando el último número del texto ORIGINAL
-    // Buscamos el último número en t (con posibles puntos) para quitarlo
-    const ultimoNumOrig = t.match(/(\d+[.,])*\d+\s*$/);
-    let nombre = ultimoNumOrig ? t.slice(0, t.length - ultimoNumOrig[0].length).trim() : t;
+    // Nombre: quitar el patrón del precio del final del texto
+    let nombre = t.slice(0, t.lastIndexOf(resultado.patron)).trim();
     nombre = nombre.replace(/^(el|la|los|las|un|una|unos|unas)\s+/i,"").trim();
     if(!nombre) nombre="producto";
 
